@@ -1,0 +1,53 @@
+---
+title: "Elastic Net escenari nul"
+author: "Max Ranz de la Iglesia"
+date: "2026-04-26"
+output: html_document
+---
+
+# Elastic Net nul
+```{r}
+setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
+load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_nul.RData")
+library(glmnet)
+
+resultats_fp_enet <- data.frame(
+  N          = comb$N,
+  pi         = comb$pi,
+  corr       = comb$correlation,
+  FP         = NA_real_,
+  FP_percent = NA_real_
+)
+
+system.time({
+  for (i in 1:nrow(comb)) {           
+    N  <- comb$N[i]                  
+    pi <- comb$pi[i]
+
+    fp_enet <- numeric(iters)
+
+    for (j in 1:iters) {
+      cat("Escenari", i, "- Simulació", j, "\n")
+
+      X_mat <- as.matrix(X[[i]][[j]])
+      y_bin <- Y[[i]][[j]]
+
+      # FIX 3: extreure coeficients directament de cv.glmnet, sense cridar glmnet() a part
+      lambda_estim <- cv.glmnet(X_mat, y_bin,
+                                family = "binomial",
+                                alpha  = 0.5,
+                                nfolds = 5)           # 5 folds: 2x més ràpid
+
+      coef_enet  <- coef(lambda_estim, s = "lambda.min")[-1]  # treu intercept
+      fp_enet[j] <- sum(coef_enet != 0)
+    }
+
+    resultats_fp_enet$FP[i]         <- mean(fp_enet)
+    resultats_fp_enet$FP_percent[i] <- mean(fp_enet) / num_vars
+  }
+})
+
+print(resultats_fp_enet)
+save(resultats_fp_enet, file = "resultats_fp_enet_nul.RData")
+```
+

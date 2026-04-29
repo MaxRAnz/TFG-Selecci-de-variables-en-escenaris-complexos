@@ -1,0 +1,53 @@
+---
+title: "LASSO escenari nul"
+author: "Max Ranz de la Iglesia"
+date: "2026-04-26"
+output: html_document
+---
+
+# LASSO nul
+```{r}
+setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
+load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_nul.RData")
+library(glmnet)
+
+resultats_fp_lasso <- data.frame(
+  N          = comb$N,
+  pi         = comb$pi,
+  corr       = comb$correlation,
+  FP         = NA_real_,
+  FP_percent = NA_real_
+)
+
+system.time({
+  for (i in 1:nrow(comb)) {          
+    N  <- comb$N[i]                  
+    pi <- comb$pi[i]
+
+    fp_lasso <- numeric(iters)
+
+    for (j in 1:iters) {
+      cat("Escenari", i, "- Simulació", j, "\n")
+
+      X_mat <- as.matrix(X[[i]][[j]])
+      y_bin <- Y[[i]][[j]]
+
+      # cv.glmnet amb paral·lelisme intern i menys folds per ser més ràpid
+      lambda_estim <- cv.glmnet(X_mat, y_bin,
+                                family   = "binomial",
+                                alpha    = 1,
+                                nfolds   = 5)        # 5 en lloc de 10: 2x més ràpid
+
+      coef_lasso <- coef(lambda_estim, s = "lambda.min")[-1]  # treu intercept
+      fp_lasso[j] <- sum(coef_lasso != 0)
+    }
+
+    resultats_fp_lasso$FP[i]         <- mean(fp_lasso)
+    resultats_fp_lasso$FP_percent[i] <- mean(fp_lasso) / num_vars
+  }
+})
+
+print(resultats_fp_lasso)
+save(resultats_fp_lasso, file = "resultats_fp_lasso_nul.RData")
+```
+

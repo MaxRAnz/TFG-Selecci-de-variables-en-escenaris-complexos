@@ -1,0 +1,70 @@
+---
+title: "LASSO 50%"
+author: "Max Ranz de la Iglesia"
+date: "2026-04-23"
+output: html_document
+---
+
+# LASSO 50%
+```{r}
+setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
+load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_50.RData")
+library(glmnet)
+
+# Inicialització del dataframe de resultats
+resultats_lasso <- data.frame(
+  N = integer(), pi = numeric(), correlation = numeric(),
+  Sensibilitat = numeric(), Especificitat = numeric(),
+  VPP = numeric(), VPN = numeric(), Accuracy = numeric(),
+  NetBenefit = numeric()
+)
+
+vars_seleccionades_lasso <- list()
+
+# Bucle de simulació
+system.time({
+  for (i in 1:nrow(comb)) {
+    N           <- comb$N[i]
+    pi          <- comb$pi[i]
+    correlation <- comb$correlation[i]
+    
+    metrics <- list()
+    vars_selec_bin <- matrix(0, nrow = iters, ncol = num_vars)
+    
+    for (j in 1:iters) {
+      print(paste("Escenari", i, "- Simulació", j,
+                  "| N =", N, "| pi =", pi, "| corr =", correlation))
+      
+      X_mat <- as.matrix(X[[i]][[j]])
+      y_vec <- Y[[i]][[j]]
+      
+      # Ajust del model LASSO
+      lambda_estim <- cv.glmnet(X_mat, y_vec, family = "binomial", alpha = 1,maxit = 1000000, thresh = 1e-7)
+      model_lasso  <- glmnet(X_mat, y_vec, alpha = 1, family = "binomial",
+                             lambda = lambda_estim$lambda.min,maxit = 1000000, thresh = 1e-7)
+      
+      vars_seleccionades <- which(coefficients(model_lasso)[-1] >= sd(as.vector(X[[i]][[j]])) / 20)
+      vars_selec_bin[j, vars_seleccionades] <- 1
+      metrics[[j]] <- metriques(vars_seleccionades, nv = num_vars)
+    }
+    
+    resultats_lasso <- rbind(resultats_lasso, data.frame(
+      N            = N,
+      pi           = pi,
+      correlation  = correlation,
+      Sensibilitat  = mean(sapply(metrics, function(x) x["sensibilitat"]), na.rm = TRUE),
+      Especificitat = mean(sapply(metrics, function(x) x["especificitat"]), na.rm = TRUE),
+      VPP           = mean(sapply(metrics, function(x) x["VPP"]),           na.rm = TRUE),
+      VPN           = mean(sapply(metrics, function(x) x["VPN"]),           na.rm = TRUE),
+      Accuracy      = mean(sapply(metrics, function(x) x["accuracy"]),      na.rm = TRUE),
+      NetBenefit    = mean(sapply(metrics, function(x) x["net_benefit"]),   na.rm = TRUE)
+    ))
+    
+    vars_seleccionades_lasso[[i]] <- vars_selec_bin
+  }
+})
+
+print(resultats_lasso)
+save(resultats_lasso, vars_seleccionades_lasso, file = "lasso50_v2.RData")
+```
+

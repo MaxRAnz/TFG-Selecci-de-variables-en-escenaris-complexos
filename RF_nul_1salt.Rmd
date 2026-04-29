@@ -1,0 +1,76 @@
+---
+title: "Untitled"
+author: "Max Ranz de la Iglesia"
+date: "2026-04-22"
+output: html_document
+---
+
+```{r}
+# RANDOM FOREST (sense Boruta) - amb correlació
+setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
+load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_nul.RData")
+library(randomForest)
+
+# Funció per seleccionar les variables més importants segons importància
+escoger_rf <- function(x, porcentage_min = 3) {
+  nada <- NA
+  if (max(x) < porcentage_min) {
+    return(nada)
+  }
+  l <- length(x)
+  cog <- c()
+  for (i in 1:(l - 1)) {
+    cog <- c(cog, abs(x[i] - x[i + 1]))
+  }
+  punt.tall2 <- which.max(cog)
+  return(names(x)[1:punt.tall2])
+}
+
+# Resultats
+resultats_fp_rf <- data.frame(
+  N           = integer(),
+  pi          = numeric(),
+  correlation = numeric(),   # <- AFEGIT
+  FP          = numeric(),
+  FP_percent  = numeric()
+)
+
+system.time({
+  for (i in seq_len(nrow(comb))) {         # <- canvi: nrow() en lloc de seq_along()
+    
+    N           <- comb[i, "N"]            # <- canvi: accés per data.frame
+    pi          <- comb[i, "pi"]
+    correlation <- comb[i, "correlation"]  # <- AFEGIT
+    fp_rf       <- numeric(iters)
+
+    for (j in 1:iters) {
+      print(paste("Escenari", i, "- Simulació", j))
+      
+      X_df  <- as.data.frame(X[[i]][[j]])
+      y_fac <- as.factor(Y[[i]][[j]])
+      
+      model_rf     <- randomForest(x = X_df, y = y_fac, importance = TRUE)
+      importancia  <- importance(model_rf, type = 1)
+      importancia_ordenada <- sort(importancia[, 1], decreasing = TRUE)
+      seleccionades <- escoger_rf(importancia_ordenada, porcentage_min = 3)
+      fp_rf[j] <- ifelse(is.na(seleccionades[1]), 0, length(seleccionades))
+    }
+
+    num_vars <- ncol(X[[i]][[1]])
+    resultats_fp_rf <- rbind(
+      resultats_fp_rf,
+      data.frame(
+        N           = N,
+        pi          = pi,
+        correlation = correlation,         
+        FP          = mean(fp_rf),
+        FP_percent  = mean(fp_rf) / num_vars
+      )
+    )
+  }
+})
+
+print(resultats_fp_rf)
+save(resultats_fp_rf, file = "resultats_fp_rf_randomForest_nul.RData")
+```
+
