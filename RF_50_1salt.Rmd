@@ -7,8 +7,8 @@ output: html_document
 
 ```{r}
 # RANDOM FOREST (sense Boruta)
-setwd("D:/Descargas")
-load("D:/Descargas/dades_escenari_50_reduit.RData")
+setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
+load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_50.RData")
 library(randomForest)
 
 # Funció per seleccionar les variables més importants segons importància
@@ -54,6 +54,6 @@ system.time({
 })
 
 print(resultats_fp_rf)
-save(resultats_fp_rf, file = "resultats_fp_rf_randomForest_NOCANVIS.RData")
+save(resultats_fp_rf, file = "resultats_fp_rf_randomForest_50_original.RData")
 ```
 
