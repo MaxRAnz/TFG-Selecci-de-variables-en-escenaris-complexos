@@ -10,6 +10,7 @@ output: html_document
 setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
 load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_50.RData")
 library(randomForest)
+library(caret)
 
 
 # Funció de selecció per salt màxim (un salt)
