@@ -1,0 +1,206 @@
+---
+title: "Untitled"
+output: html_document
+date: "2026-04-28"
+---
+
+# Generació de les dades: escenari nul
+
+```{r}
+# Llibreries
+library(logistf)
+library(MASS)
+set.seed(123)
+
+# Paràmetres
+
+num_vars <- 100
+num_vars2 <- num_vars/2
+
+iters <- 100
+iters_boot <- iters*2
+
+# Fixem uns nivells de correlació
+correlation_levels <- c("random")
+
+# combinacions possibles (escenaris)
+comb <- expand.grid(
+  N = c(1000, 5000),
+  pi = c(0.1, 0.3),
+  correlation = correlation_levels
+)
+
+
+# FUNCIÓ PER GENERAR UNA MATRIU X(variables predictores) AMB CORRELACIÓ
+generate_data <- function(N, num_vars, correlation) {
+  
+  corr_val <- as.character(correlation)
+  
+  if (corr_val == "random") {
+    
+    loadings <- runif(num_vars, min = sqrt(0.1), max = sqrt(0.3))
+    corr_matrix <- outer(loadings, loadings)
+    diag(corr_matrix) <- 1
+    
+  } else {
+    
+    corr_val <- as.numeric(corr_val)
+    
+    if (corr_val == 0) {
+      
+      corr_matrix <- diag(num_vars)
+      
+    } else {
+      
+      corr_matrix <- matrix(corr_val, nrow = num_vars, ncol = num_vars)
+      diag(corr_matrix) <- 1
+      
+    }
+  }
+  
+  X <- mvrnorm(n = N, mu = rep(0, num_vars), Sigma = corr_matrix, tol = 1e-3)
+  colnames(X) <- paste0("X", 1:num_vars)
+  
+  return(X)
+}
+# FUNCIÓ PER CALCULAR FALSOS POSITIUS
+
+calcula_fp <- function(model, penalized = FALSE) {
+  
+  if (penalized) {
+    
+    pvals <- model$prob[-1]
+    
+  } else {
+    
+    coeficients <- summary(model)$coefficients
+    nvar <- nrow(coeficients) - 1
+    
+  }
+  
+  return(nvar)
+}
+
+
+# GENERACIÓ FINAL DE LES DADES
+
+
+X <- list()
+Y <- list()
+
+for (i in 1:nrow(comb)) {
+  
+  N <- comb$N[i]
+  pi <- comb$pi[i]
+  correlation <- comb$correlation[i]
+  
+  X[[i]] <- list()
+  Y[[i]] <- list()
+  
+  for (j in 1:iters){
+    
+    # variables explicatives correlacionades
+    X[[i]][[j]] <- generate_data(N, num_vars, correlation)
+    
+    # resposta binària (model nul)
+    Y[[i]][[j]] <- rbinom(N, 1, pi)
+    
+  }
+}
+
+
+# DADES PER BOOTSTRAP
+
+
+X2 <- list()
+Y2 <- list()
+
+for (i in 1:nrow(comb)) {
+  
+  N <- comb$N[i]
+  pi <- comb$pi[i]
+  correlation <- comb$correlation[i]
+  
+  X2[[i]] <- list()
+  Y2[[i]] <- list()
+  
+  for (j in 1:iters_boot){
+    
+    X2[[i]][[j]] <- generate_data(N, num_vars2, correlation)
+    
+    Y2[[i]][[j]] <- rbinom(N, 1, pi)
+    
+  }
+}
+
+```
+```{r}
+# Test aïllat
+library(MASS)
+set.seed(123)
+num_vars <- 100
+
+loadings <- runif(num_vars, min = sqrt(0.1), max = sqrt(0.3))
+corr_matrix <- outer(loadings, loadings)
+diag(corr_matrix) <- 1
+
+# Comprovem els autovalors
+eig_vals <- eigen(corr_matrix, symmetric = TRUE, only.values = TRUE)$values
+cat("Mínim autovalor:", min(eig_vals), "\n")
+cat("Autovalors negatius:", sum(eig_vals < 0), "\n")
+cat("Autovalors < 1e-6:", sum(eig_vals < 1e-6), "\n")
+
+# Comprovem si és simètrica
+cat("És simètrica:", isSymmetric(corr_matrix), "\n")
+```
+```{r}
+# Quin escenari dona error?
+for (i in 1:nrow(comb)) {
+  cat("Escenari", i, "- correlació:", as.character(comb$correlation[i]), "\n")
+  tryCatch({
+    test <- generate_data(comb$N[i], num_vars, comb$correlation[i])
+    cat("  OK\n")
+  }, error = function(e) {
+    cat("  ERROR:", e$message, "\n")
+  })
+}
+```
+
+
+```{r}
+
+# COMPROVACIÓ DE LA GENERACIÓ DE LES DADES
+
+
+for (i in 1:length(X)) {
+  
+  cat("\n-----------------------------\n")
+  cat("Escenari:", i, "\n")
+  
+  X_comb <- do.call(rbind, X[[i]])
+  Y_comb <- unlist(Y[[i]])
+  
+  cat("Dimensions X:", dim(X_comb), "\n")
+  
+  cat("Proporció Y:\n")
+  print(prop.table(table(Y_comb)))
+  
+  cor_matrix <- cor(X_comb)
+  
+  cat("Correlació mitjana:",
+      mean(cor_matrix[upper.tri(cor_matrix)]),
+      "\n")
+  
+ cat("Correlació esperada:",
+    ifelse(as.character(comb$correlation[i]) == "random", 
+           "U(0.1, 0.3)", 
+           as.character(comb$correlation[i])),
+    "\n")
+  
+}
+```
+
+```{r}
+save(comb, X, Y, X2, Y2, num_vars, iters, calcula_fp, 
+     file = "dades_escenari_nul_corrAleat.RData")
+```
