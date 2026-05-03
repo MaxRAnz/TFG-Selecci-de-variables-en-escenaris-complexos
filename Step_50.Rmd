@@ -7,8 +7,8 @@ output: html_document
 
 # STEPWISE 50%
 ```{r}
-setwd("D:/Descargas")
-load("D:/Descargas/dades_escenari_50_reduit.RData")
+setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
+load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_50.RData")
 library(bigmemory)
 library(biglm)
 library(bigstep)
