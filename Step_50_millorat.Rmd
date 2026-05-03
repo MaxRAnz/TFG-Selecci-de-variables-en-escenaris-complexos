@@ -21,36 +21,34 @@ cl <- makeCluster(n_cores)
 registerDoParallel(cl)
 cat("Usant", n_cores, "cores\n")
 
-# Inicialitzem resultats 
+#  Inicialitzem resultats 
 resultats_step50 <- data.frame(
-  N            = integer(),
-  pi           = numeric(),
-  correlation  = numeric(),
-  Sensibilitat = numeric(),
+  N             = integer(),
+  pi            = numeric(),
+  correlation   = numeric(),
+  Sensibilitat  = numeric(),
   Especificitat = numeric(),
-  VPP          = numeric(),
-  VPN          = numeric(),
-  Accuracy     = numeric(),
-  NetBenefit   = numeric()
+  VPP           = numeric(),
+  VPN           = numeric(),
+  Accuracy      = numeric(),
+  NetBenefit    = numeric()
 )
 vars_seleccionades_step <- list()
 
-# Bucle principal per escenaris 
+# Bucle principal per escenaris
 system.time({
   for (i in 1:nrow(comb)) {
     N           <- comb$N[i]
     pi          <- comb$pi[i]
     correlation <- comb$correlation[i]
-    iters_i     <- ifelse(N == 1000, 100, 25)
 
     cat(sprintf("\n=== Escenari %d/%d | N=%d | pi=%.2f | corr=%.2f | iters=%d ===\n",
-                i, nrow(comb), N, pi, correlation, iters_i))
+                i, nrow(comb), N, pi, correlation, iters))
 
-    # Iteracions en paral·lel 
+    #Iteracions en paral·lel
     resultats_iter <- foreach(
-      j              = 1:iters_i,
+      j              = 1:iters,
       .packages      = c("glmnet", "caret"),
-      .export        = c("X", "Y", "metriques", "num_vars"),
       .combine       = "rbind",
       .errorhandling = "pass"
     ) %dopar% {
@@ -59,15 +57,14 @@ system.time({
       colnames(x_mat) <- paste0("X", 1:ncol(x_mat))
       y_vec <- Y[[i]][[j]]
 
-      #Preselecció amb elastic net 
-      # Redueix les 100 variables a les més prometedores
+      #  Preselecció amb elastic net 
       cv_en <- cv.glmnet(x_mat, y_vec,
                          family  = "binomial",
-                         alpha   = 0.5,   # elastic net
+                         alpha   = 0.5,
                          nfolds  = 5,
                          nlambda = 30)
 
-      coef_en    <- coef(cv_en, s = "lambda.min")[-1]  # treu intercept
+      coef_en     <- coef(cv_en, s = "lambda.min")[-1]
       vars_presel <- which(coef_en != 0)
 
       # Si elastic net és massa restrictiu, agafem les 30 amb |coef| més grans
@@ -75,7 +72,7 @@ system.time({
         vars_presel <- order(abs(coef_en), decreasing = TRUE)[1:30]
       }
 
-      # Stepwise sobre el subset preseleccionat 
+# Stepwise sobre el subset preseleccionat 
       dades_sub  <- data.frame(y = y_vec, x_mat[, vars_presel, drop = FALSE])
       model_null <- glm(y ~ 1, data = dades_sub, family = binomial)
       model_full <- glm(y ~ ., data = dades_sub, family = binomial)
@@ -84,29 +81,26 @@ system.time({
                          direction = "both",
                          trace     = 0)
 
-      # Recuperem índexs originals (1:100)
-      noms_sel  <- names(coef(model_step))[-1]        # treu intercept
-      idx_sub   <- as.integer(sub("X", "", noms_sel)) # índex dins subset
-      vars_orig <- vars_presel[idx_sub]               # índex original
+      #  Recuperem índexs originals (1:100) 
+      noms_sel  <- names(coef(model_step))[-1]
+      idx_sub   <- as.integer(sub("X", "", noms_sel))
+      vars_orig <- vars_presel[idx_sub]
 
-      #  Vector binari de variables seleccionades
+      # Vector binari de variables seleccionades
       vars_bin <- rep(0L, 100)
       if (length(vars_orig) > 0) vars_bin[vars_orig] <- 1L
 
       #  Mètriques 
       m <- metriques(vars_orig, nv = num_vars)
 
-      # Retornem vector amb tot
       c(vars_bin,
         m["sensibilitat"], m["especificitat"],
         m["VPP"], m["VPN"], m["accuracy"], m["net_benefit"])
     }
 
-    # Agregació de resultats
-    # Les primeres 100 columnes són el vector binari de variables
-    # Les últimes 6 són les mètriques
-    vars_mat    <- resultats_iter[, 1:100,     drop = FALSE]
-    metrics_mat <- resultats_iter[, 101:106,   drop = FALSE]
+# Agregació de resultats 
+    vars_mat    <- resultats_iter[, 1:100,   drop = FALSE]
+    metrics_mat <- resultats_iter[, 101:106, drop = FALSE]
 
     resultats_step50 <- rbind(resultats_step50, data.frame(
       N             = N,
@@ -122,14 +116,14 @@ system.time({
 
     vars_seleccionades_step[[i]] <- vars_mat
 
-    # Guardat parcial per no perdre feina 
+    #  Guardat parcial per no perdre feina
     save(resultats_step50, vars_seleccionades_step,
          file = "resultats_step50_parcial.RData")
     cat("Escenari", i, "completat i guardat.\n")
   }
 })
 
-# Tanca el clúster i guarda resultats finals
+#Guardem resultats finals 
 stopCluster(cl)
 print(resultats_step50)
 save(resultats_step50, vars_seleccionades_step, file = "resultats_step50_millorat.RData")
