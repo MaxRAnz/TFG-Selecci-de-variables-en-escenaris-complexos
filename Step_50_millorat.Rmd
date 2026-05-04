@@ -15,13 +15,17 @@ library(doParallel)
 library(foreach)
 library(glmnet)
 
-# Configuració paral·lela
-n_cores <- max(1, parallel::detectCores() - 1)
+# ── Alliberem memòria innecessària ──────────────────────────────────
+rm(X2, Y2)
+gc()
+
+# ── Configuració paral·lel ──────────────────────────────────────────
+n_cores <- 4
 cl <- makeCluster(n_cores)
 registerDoParallel(cl)
 cat("Usant", n_cores, "cores\n")
 
-#  Inicialitzem resultats 
+# ── Inicialitzem resultats ──────────────────────────────────────────
 resultats_step50 <- data.frame(
   N             = integer(),
   pi            = numeric(),
@@ -35,7 +39,7 @@ resultats_step50 <- data.frame(
 )
 vars_seleccionades_step <- list()
 
-# Bucle principal per escenaris
+# ── Bucle principal per escenaris ───────────────────────────────────
 system.time({
   for (i in 1:nrow(comb)) {
     N           <- comb$N[i]
@@ -45,19 +49,25 @@ system.time({
     cat(sprintf("\n=== Escenari %d/%d | N=%d | pi=%.2f | corr=%.2f | iters=%d ===\n",
                 i, nrow(comb), N, pi, correlation, iters))
 
-    #Iteracions en paral·lel
+    # Extraiem dades de l'escenari fora del foreach
+    # per no serialitzar X i Y sencers als workers
+    X_i <- X[[i]]
+    Y_i <- Y[[i]]
+
+    # ── Iteracions en paral·lel ─────────────────────────────────────
     resultats_iter <- foreach(
       j              = 1:iters,
       .packages      = c("glmnet", "caret"),
+      .export        = c("X_i", "Y_i", "metriques", "num_vars"),
       .combine       = "rbind",
       .errorhandling = "pass"
     ) %dopar% {
 
-      x_mat <- X[[i]][[j]]
+      x_mat <- X_i[[j]]
       colnames(x_mat) <- paste0("X", 1:ncol(x_mat))
-      y_vec <- Y[[i]][[j]]
+      y_vec <- Y_i[[j]]
 
-      #  Preselecció amb elastic net 
+      # ── Preselecció amb elastic net ─────────────────────────────
       cv_en <- cv.glmnet(x_mat, y_vec,
                          family  = "binomial",
                          alpha   = 0.5,
@@ -67,12 +77,11 @@ system.time({
       coef_en     <- coef(cv_en, s = "lambda.min")[-1]
       vars_presel <- which(coef_en != 0)
 
-      # Si elastic net és massa restrictiu, agafem les 30 amb |coef| més grans
       if (length(vars_presel) < 5) {
         vars_presel <- order(abs(coef_en), decreasing = TRUE)[1:30]
       }
 
-# Stepwise sobre el subset preseleccionat 
+      # ── Stepwise sobre el subset preseleccionat ─────────────────
       dades_sub  <- data.frame(y = y_vec, x_mat[, vars_presel, drop = FALSE])
       model_null <- glm(y ~ 1, data = dades_sub, family = binomial)
       model_full <- glm(y ~ ., data = dades_sub, family = binomial)
@@ -81,16 +90,16 @@ system.time({
                          direction = "both",
                          trace     = 0)
 
-      #  Recuperem índexs originals (1:100) 
+      # ── Recuperem índexs originals (1:100) ──────────────────────
       noms_sel  <- names(coef(model_step))[-1]
       idx_sub   <- as.integer(sub("X", "", noms_sel))
       vars_orig <- vars_presel[idx_sub]
 
-      # Vector binari de variables seleccionades
+      # ── Vector binari ───────────────────────────────────────────
       vars_bin <- rep(0L, 100)
       if (length(vars_orig) > 0) vars_bin[vars_orig] <- 1L
 
-      #  Mètriques 
+      # ── Mètriques ───────────────────────────────────────────────
       m <- metriques(vars_orig, nv = num_vars)
 
       c(vars_bin,
@@ -98,7 +107,7 @@ system.time({
         m["VPP"], m["VPN"], m["accuracy"], m["net_benefit"])
     }
 
-# Agregació de resultats 
+    # ── Agregació de resultats ──────────────────────────────────────
     vars_mat    <- resultats_iter[, 1:100,   drop = FALSE]
     metrics_mat <- resultats_iter[, 101:106, drop = FALSE]
 
@@ -116,14 +125,14 @@ system.time({
 
     vars_seleccionades_step[[i]] <- vars_mat
 
-    #  Guardat parcial per no perdre feina
+    # ── Guardat parcial per no perdre feina ─────────────────────────
     save(resultats_step50, vars_seleccionades_step,
          file = "resultats_step50_parcial.RData")
     cat("Escenari", i, "completat i guardat.\n")
   }
 })
 
-#Guardem resultats finals 
+# ── Tanca el clúster i guarda resultats finals ──────────────────────
 stopCluster(cl)
 print(resultats_step50)
 save(resultats_step50, vars_seleccionades_step, file = "resultats_step50_millorat.RData")
