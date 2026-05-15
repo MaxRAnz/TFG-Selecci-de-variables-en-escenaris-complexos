@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Model: escenari nul amb correlacio aleatoria
 output: html_document
 date: "2026-04-28"
 ---
@@ -21,11 +21,11 @@ iters <- 100
 iters_boot <- iters*2
 
 # Fixem uns nivells de correlació
-correlation_levels <- c("random")
+correlation_levels <- c(0, 0.1, 0.3,"random")
 
 # combinacions possibles (escenaris)
 comb <- expand.grid(
-  N = c(1000, 5000),
+  N = c(500, 1000),
   pi = c(0.1, 0.3),
   correlation = correlation_levels
 )
