@@ -11,39 +11,60 @@ setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
 load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_nul_corrAleat.RData")
 library(Boruta)
 
+set.seed(123)
+
 resultats_fp_boruta <- data.frame(
   N           = integer(),
   pi          = numeric(),
-  correlation = numeric(),
+  correlation = character(),
   FP          = numeric(),
   FP_percent  = numeric()
 )
 
 system.time({
+
   for (i in seq_len(nrow(comb))) {
 
     N           <- comb$N[i]
     pi          <- comb$pi[i]
     correlation <- comb$correlation[i]
-    fp_boruta   <- numeric(iters)
+
+    fp_boruta <- numeric(iters)
 
     for (j in 1:iters) {
+
       cat("Escenari", i, "- Simulació", j, "\n")
 
       X_df  <- as.data.frame(X[[i]][[j]])
-      y_fac <- as.factor(Y[[i]][[j]])   
+      y_fac <- as.factor(Y[[i]][[j]])
 
       df_boruta <- data.frame(y = y_fac, X_df)
 
-      tryCatch({                         # protecció errors
+      tryCatch({
+
         model_boruta <- suppressWarnings(
-          Boruta(y ~ ., data = df_boruta, doTrace = 0)
+          Boruta(
+            y ~ .,
+            data = df_boruta,
+            doTrace = 0,
+            maxRuns = 100
+          )
         )
-        seleccionades  <- getSelectedAttributes(model_boruta, withTentative = FALSE)
-        fp_boruta[j]   <- length(seleccionades)
+
+        seleccionades <- getSelectedAttributes(
+          model_boruta,
+          withTentative = FALSE
+        )
+
+        fp_boruta[j] <- length(seleccionades)
 
       }, error = function(e) {
-        cat(sprintf("  [WARN] Escenari %d, sim %d: %s\n", i, j, conditionMessage(e)))
+
+        cat(sprintf(
+          "  [WARN] Escenari %d, sim %d: %s\n",
+          i, j, conditionMessage(e)
+        ))
+
         fp_boruta[j] <<- 0
       })
     }
@@ -53,7 +74,7 @@ system.time({
       data.frame(
         N           = N,
         pi          = pi,
-        correlation = correlation,
+        correlation = as.character(correlation),
         FP          = mean(fp_boruta),
         FP_percent  = mean(fp_boruta) / num_vars
       )
@@ -62,6 +83,7 @@ system.time({
 })
 
 print(resultats_fp_boruta)
-save(resultats_fp_boruta, file = "resultats_fp_boruta_nul.RData")
+
+save(resultats_fp_boruta,file = "resultats_fp_boruta_nul.RData")
 ```
 
