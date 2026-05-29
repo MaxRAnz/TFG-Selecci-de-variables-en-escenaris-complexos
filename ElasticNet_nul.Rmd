@@ -6,40 +6,50 @@ output: html_document
 ---
 
 # Elastic Net nul
+
 ```{r}
 setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
-load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_nul.RData")
+load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_nul_corrAleat.RData")
 library(glmnet)
 
 resultats_fp_enet <- data.frame(
-  N          = comb$N,
-  pi         = comb$pi,
-  corr       = comb$correlation,
-  FP         = NA_real_,
-  FP_percent = NA_real_
+  N           = comb$N,
+  pi          = comb$pi,
+  correlation = as.character(comb$correlation), 
+  FP          = NA_real_,
+  FP_percent  = NA_real_,
+  stringsAsFactors = FALSE
 )
 
 system.time({
-  for (i in 1:nrow(comb)) {           
-    N  <- comb$N[i]                  
-    pi <- comb$pi[i]
+  for (i in 1:nrow(comb)) {
+
+    N           <- comb$N[i]
+    pi          <- comb$pi[i]
+    correlation <- as.character(comb$correlation[i])
 
     fp_enet <- numeric(iters)
 
     for (j in 1:iters) {
-      cat("Escenari", i, "- Simulació", j, "\n")
+      cat("Escenari", i, "(N=", N, "pi=", pi, "corr=", correlation, ")",
+          "- Simulació", j, "\n")
 
       X_mat <- as.matrix(X[[i]][[j]])
       y_bin <- Y[[i]][[j]]
 
-      # FIX 3: extreure coeficients directament de cv.glmnet, sense cridar glmnet() a part
-      lambda_estim <- cv.glmnet(X_mat, y_bin,
-                                family = "binomial",
-                                alpha  = 0.5,
-                                nfolds = 5)           # 5 folds: 2x més ràpid
+      tryCatch({
+        lambda_estim <- cv.glmnet(X_mat, y_bin,
+                                  family = "binomial",
+                                  alpha  = 0.5,
+                                  nfolds = 5)
 
-      coef_enet  <- coef(lambda_estim, s = "lambda.min")[-1]  # treu intercept
-      fp_enet[j] <- sum(coef_enet != 0)
+        coef_enet  <- coef(lambda_estim, s = "lambda.min")[-1]
+        fp_enet[j] <- sum(coef_enet != 0)
+
+      }, error = function(e) {
+        cat(sprintf("  [WARN] Escenari %d, sim %d: %s\n", i, j, conditionMessage(e)))
+        fp_enet[j] <<- 0
+      })
     }
 
     resultats_fp_enet$FP[i]         <- mean(fp_enet)
@@ -48,6 +58,6 @@ system.time({
 })
 
 print(resultats_fp_enet)
-save(resultats_fp_enet, file = "resultats_fp_enet_nul.RData")
+save(resultats_fp_enet, file = "resultats_fp_enet_nul_2.RData")
 ```
 
