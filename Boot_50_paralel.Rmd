@@ -20,7 +20,7 @@ plan(multisession, workers = 12)
 
 iters_boot <- iters * 2
 num_vars2  <- num_vars / 2     
-num_sig2   <- num_vars2 / 2   p
+num_sig2   <- num_vars2 / 2   
 B          <- 50
 
 metriques <- function(vars_seleccionades, p = 0.5, nv) {
