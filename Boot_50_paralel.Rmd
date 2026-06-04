@@ -6,8 +6,8 @@ output: html_document
 ---
 
 # Bootstrap PARAL·LELITZAT 50%
-```{r}
 
+```{r}
 setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
 load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_50_corrAleat.RData") 
 
@@ -16,10 +16,10 @@ library(futurize)
 library(progressify)
 library(caret)
 
-plan(multisession, workers = 12)
+plan(multisession, workers = 12) #nuclis per a la paralel·lització
 
 iters_boot <- iters * 2
-num_vars2  <- num_vars / 2     
+num_vars2  <- num_vars / 2    
 num_sig2   <- num_vars2 / 2   
 B          <- 50
 
@@ -46,6 +46,7 @@ metriques <- function(vars_seleccionades, p = 0.5, nv) {
     net_benefit   = (TP/nv) - (FP/nv)*(p/(1-p)))
 }
 
+#  Bucle principal 
 resultats_boot_50 <- data.frame(
   N=integer(), pi=numeric(), correlation=character(),
   FP_075=numeric(), FP_075_pct=numeric(), TP_075=numeric(), TP_075_pct=numeric(),
@@ -70,7 +71,6 @@ system.time({
     X2_i <- X2[[i]]
     Y2_i <- Y2[[i]]
 
-    # Paral·lelització
     resultats_raw <- lapply(1:iters_boot, function(j) {
 
       library(bigstep)
@@ -116,11 +116,9 @@ system.time({
         freq_seleccio <- rep(0, num_vars2)
       }
 
-     
       vars_sel_075 <- which(freq_seleccio > 0.75)
       vars_sel_050 <- which(freq_seleccio > 0.50)
 
-      # llindar 0.75
       if (length(vars_sel_075) > 0) {
         m_075 <- metriques(vars_sel_075, p = pi_val, nv = num_vars2)
       } else {
@@ -128,7 +126,6 @@ system.time({
                    accuracy=(num_vars2-num_sig2)/num_vars2, net_benefit=0)
       }
 
-      #llindar 0.50
       if (length(vars_sel_050) > 0) {
         m_050 <- metriques(vars_sel_050, p = pi_val, nv = num_vars2)
       } else {
@@ -140,30 +137,31 @@ system.time({
                   i, j, b_valids, B, max(freq_seleccio),
                   sum(vars_sel_075 <= num_sig2), sum(vars_sel_075 > num_sig2)))
 
-      #  vector amb resultats
-      c(fp_075      = sum(vars_sel_075 > num_sig2),
-        tp_075      = sum(vars_sel_075 <= num_sig2),
-        fp_050      = sum(vars_sel_050 > num_sig2),
-        tp_050      = sum(vars_sel_050 <= num_sig2),
-        sens_075    = m_075["sensibilitat"],
-        esp_075     = m_075["especificitat"],
-        VPP_075     = m_075["VPP"],
-        VPN_075     = m_075["VPN"],
-        acc_075     = m_075["accuracy"],
-        NB_075      = m_075["net_benefit"],
-        sens_050    = m_050["sensibilitat"],
-        esp_050     = m_050["especificitat"],
-        VPP_050     = m_050["VPP"],
-        VPN_050     = m_050["VPN"],
-        acc_050     = m_050["accuracy"],
-        NB_050      = m_050["net_benefit"])
+      result <- c(
+        sum(vars_sel_075 > num_sig2),   # fp_075
+        sum(vars_sel_075 <= num_sig2),  # tp_075
+        sum(vars_sel_050 > num_sig2),   # fp_050
+        sum(vars_sel_050 <= num_sig2),  # tp_050
+        unname(m_075),                  # sens_075, esp_075, VPP_075, VPN_075, acc_075, NB_075
+        unname(m_050)                   # sens_050, esp_050, VPP_050, VPN_050, acc_050, NB_050
+      )
+      names(result) <- c("fp_075","tp_075","fp_050","tp_050",
+                         "sens_075","esp_075","VPP_075","VPN_075","acc_075","NB_075",
+                         "sens_050","esp_050","VPP_050","VPN_050","acc_050","NB_050")
+      result
 
     }) |>
       progressify() |>
       futurize(seed = 123)
 
-    #  resultats 
-    mat <- do.call(rbind, lapply(resultats_raw, function(x) x))
+    # resultats 
+    mat <- do.call(rbind, lapply(resultats_raw, function(x) {
+      x <- unname(x)
+      names(x) <- c("fp_075","tp_075","fp_050","tp_050",
+                    "sens_075","esp_075","VPP_075","VPN_075","acc_075","NB_075",
+                    "sens_050","esp_050","VPP_050","VPN_050","acc_050","NB_050")
+      x
+    }))
 
     resultats_boot_50 <- rbind(
       resultats_boot_50,
@@ -175,22 +173,22 @@ system.time({
         FP_075_pct  = mean(mat[, "fp_075"]) / (num_vars2 - num_sig2),
         TP_075      = mean(mat[, "tp_075"]),
         TP_075_pct  = mean(mat[, "tp_075"]) / num_sig2,
-        sens_075    = mean(mat[, "sens_075"],  na.rm = TRUE),
-        esp_075     = mean(mat[, "esp_075"],   na.rm = TRUE),
-        VPP_075     = mean(mat[, "VPP_075"],   na.rm = TRUE),
-        VPN_075     = mean(mat[, "VPN_075"],   na.rm = TRUE),
-        acc_075     = mean(mat[, "acc_075"],   na.rm = TRUE),
-        NB_075      = mean(mat[, "NB_075"],    na.rm = TRUE),
+        sens_075    = mean(mat[, "sens_075"], na.rm = TRUE),
+        esp_075     = mean(mat[, "esp_075"],  na.rm = TRUE),
+        VPP_075     = mean(mat[, "VPP_075"],  na.rm = TRUE),
+        VPN_075     = mean(mat[, "VPN_075"],  na.rm = TRUE),
+        acc_075     = mean(mat[, "acc_075"],  na.rm = TRUE),
+        NB_075      = mean(mat[, "NB_075"],   na.rm = TRUE),
         FP_050      = mean(mat[, "fp_050"]),
         FP_050_pct  = mean(mat[, "fp_050"]) / (num_vars2 - num_sig2),
         TP_050      = mean(mat[, "tp_050"]),
         TP_050_pct  = mean(mat[, "tp_050"]) / num_sig2,
-        sens_050    = mean(mat[, "sens_050"],  na.rm = TRUE),
-        esp_050     = mean(mat[, "esp_050"],   na.rm = TRUE),
-        VPP_050     = mean(mat[, "VPP_050"],   na.rm = TRUE),
-        VPN_050     = mean(mat[, "VPN_050"],   na.rm = TRUE),
-        acc_050     = mean(mat[, "acc_050"],   na.rm = TRUE),
-        NB_050      = mean(mat[, "NB_050"],    na.rm = TRUE),
+        sens_050    = mean(mat[, "sens_050"], na.rm = TRUE),
+        esp_050     = mean(mat[, "esp_050"],  na.rm = TRUE),
+        VPP_050     = mean(mat[, "VPP_050"],  na.rm = TRUE),
+        VPN_050     = mean(mat[, "VPN_050"],  na.rm = TRUE),
+        acc_050     = mean(mat[, "acc_050"],  na.rm = TRUE),
+        NB_050      = mean(mat[, "NB_050"],   na.rm = TRUE),
         stringsAsFactors = FALSE
       )
     )
@@ -208,4 +206,6 @@ system.time({
 print(resultats_boot_50)
 save(resultats_boot_50, file = "resultats_boot_50_final.RData")
 ```
+
+
 
