@@ -6,6 +6,7 @@ output: html_document
 ---
 
 
+# Ranger escenari nul
 ```{r}
 setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
 
