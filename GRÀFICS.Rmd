@@ -5,7 +5,6 @@ date: "2026-06-04"
 output: html_document
 ---
 
-
 ```{r}
 library(dplyr)
 library(ggplot2)
@@ -21,8 +20,9 @@ COLORS_METODES <- c(
   "Bootstrap"     = "#457B9D",
   "Lasso"         = "#2A9D8F",
   "Elastic Net"   = "#E9C46A",
-  "Random Forest" = "#F4A261",
-  "Boruta"        = "#9B5DE5"
+  "Boruta"        = "#9B5DE5",
+  "Ranger"        = "#00FF00",
+  "VSURF"         = "#F4A261"
 )
 
 COLORS_CORR <- c(
@@ -44,18 +44,18 @@ load("resultats_step50_2.RData")
 load("resultats_boot_50_final.RData")
 load("lasso50_v2_2.RData")
 load("resultats_enet_50_2.RData")
-load("resultats_fp_rf_randomForest_nul.RData")
 load("resultats_boruta_50_correlacio.RData")
+load("resultats_ranger_50.RData")
+load("resultats_vsurf_50_correlacio.RData")  
 
 # Escenari nul
 load("resultats_sw_nul_2.RData")
 load("resultats_fp_boot_nul_final_B20.RData")
 load("resultats_fp_lasso_nul_aleat.RData")
 load("resultats_fp_enet_nul_2.RData")
-load("resultats_rf_50_1salt.RData")
 load("resultats_fp_boruta_nul.RData")
-
-
+load("resultats_fp_vsurf_nul.RData")
+load("resultats_fp_ranger_nul.RData")
 ```
 
 ```{r}
@@ -78,8 +78,9 @@ summary_total <- bind_rows(
   prep_50(resultats_boot_50,   "Bootstrap"),
   prep_50(resultats_lasso,  "Lasso"),
   prep_50(resultats_enet,   "Elastic Net"),
-  prep_50(resultats_rf,     "Random Forest"),
-  prep_50(resultats_boruta, "Boruta")
+  prep_50(resultats_ranger_50,     "Ranger"),
+  prep_50(resultats_boruta, "Boruta"),  
+  prep_50(resultats_vsurf, "VSURF")
 ) %>%
   mutate(
     metode      = factor(metode, levels = names(COLORS_METODES)),
@@ -100,8 +101,9 @@ fp_total <- bind_rows(
   prep_nul(resultats_fp_boot,   "Bootstrap"),
   prep_nul(resultats_fp_lasso,  "Lasso"),
   prep_nul(resultats_fp_enet,   "Elastic Net"),
-  prep_nul(resultats_fp_rf,     "Random Forest"),
-  prep_nul(resultats_boruta, "Boruta")
+  prep_nul(resultats_fp_ranger,     "Ranger"),
+  prep_nul(resultats_fp_boruta, "Boruta"),
+  prep_nul(resultats_fp_vsurf, "VSURF")
 ) %>%
   mutate(
     metode      = factor(metode, levels = names(COLORS_METODES)),
@@ -356,8 +358,8 @@ p_fp_forest <- ggplot(fp_total,
   ) +
   scale_x_continuous(labels = function(x) paste0(x, "%")) +
   labs(
-    title = "Forest plot — Falsos positius (%) — Escenari nul",
-    x     = "FP (%)",
+    title = "Forest plot — Ràtio de Falsos positius — Escenari nul",
+    x     = "Ràtio de FP (%)",
     y     = NULL
   ) +
   theme_bw(base_size = 12) +
@@ -396,10 +398,10 @@ p_fp_heatmap <- fp_total %>%
     mid      = "#F7F7F7",
     high     = "#D62828",
     midpoint = 5,
-    name     = "FP (%)"
+    name     = "Ràtio FP (%)"
   ) +
   labs(
-    title = "Heatmap — Falsos positius (%) — Escenari nul",
+    title = "Heatmap — Ràtio de Falsos positius — Escenari nul",
     x     = "Escenari (N, pi, correlació)",
     y     = "Mètode"
   ) +
@@ -415,4 +417,6 @@ ggsave("plots/fp_heatmap.png",
        dpi = 300, bg = "white")
 print(p_fp_heatmap)
 ```
+
+
 
