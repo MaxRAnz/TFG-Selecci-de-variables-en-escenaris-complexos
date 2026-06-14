@@ -17,7 +17,7 @@ library(futurize)
 library(progressify)
 
 
-plan(multisession, workers = 12)
+plan(multisession, workers = 12) #nodes que té l'ordinador
 
 iters_boot <- iters * 2
 num_vars2  <- num_vars / 2
