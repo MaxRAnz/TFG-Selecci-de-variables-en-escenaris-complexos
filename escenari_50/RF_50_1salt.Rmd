@@ -30,8 +30,8 @@ escoger_rf <- function(x, porcentage_min = 3) {
 # Inicialitzem resultats
 resultats_rf <- data.frame(
   N             = integer(),
-  pi            = numeric(),
-  correlation   = numeric(),   # <- AFEGIT
+  pi            = numeric(), 
+  correlation   = numeric(),   
   Sensibilitat  = numeric(),
   Especificitat = numeric(),
   VPP           = numeric(),
@@ -50,10 +50,10 @@ system.time({
 
     N           <- comb[i, "N"]
     pi          <- comb[i, "pi"]
-    correlation <- comb[i, "correlation"]   # <- AFEGIT
+    correlation <- comb[i, "correlation"]  
 
     metrics        <- list()
-    vars_selec_bin <- matrix(0, nrow = iters, ncol = num_vars)  # num_vars = 100
+    vars_selec_bin <- matrix(0, nrow = iters, ncol = num_vars) 
 
     for (j in 1:iters) {
       print(paste("Escenari", i, "- Simulació", j))
@@ -70,7 +70,6 @@ system.time({
         seleccionades <- escoger_rf(importancia_ordenada, porcentage_min = 3)
 
         if (!is.na(seleccionades[1])) {
-          # Convertim noms ("X1","X3"...) a índexs numèrics
           idx_sel <- as.numeric(gsub("[^0-9]", "", seleccionades))
           idx_sel <- idx_sel[!is.na(idx_sel) & idx_sel >= 1 & idx_sel <= num_vars]
           vars_selec_bin[j, idx_sel] <- 1
@@ -90,7 +89,7 @@ system.time({
       data.frame(
         N             = N,
         pi            = pi,
-        correlation   = correlation,         # <- AFEGIT
+        correlation   = correlation,        
         Sensibilitat  = mean(sapply(metrics, function(x) x["sensibilitat"]),  na.rm = TRUE),
         Especificitat = mean(sapply(metrics, function(x) x["especificitat"]), na.rm = TRUE),
         VPP           = mean(sapply(metrics, function(x) x["VPP"]),           na.rm = TRUE),
@@ -104,7 +103,6 @@ system.time({
   }
 })
 
-# Guardem resultats
 print(resultats_rf)
 save(resultats_rf, vars_seleccionades_rf, file = "resultats_rf_50_1salt.RData")
 ```
