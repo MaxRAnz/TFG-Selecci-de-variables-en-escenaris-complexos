@@ -15,9 +15,6 @@ load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_es
 library(Boruta)
 library(caret)
 
-# =========================
-# Inicialitzem resultats
-# =========================
 resultats_boruta <- data.frame(
   N             = integer(),
   pi            = numeric(),
@@ -33,9 +30,7 @@ resultats_boruta <- data.frame(
 
 vars_seleccionades_boruta <- list()
 
-# =========================
-# Bucle principal
-# =========================
+
 system.time({
   for (i in seq_len(nrow(comb))) {
 
@@ -97,9 +92,6 @@ system.time({
   }
 })
 
-# =========================
-# Guardem resultats
-# =========================
 print(resultats_boruta)
 save(resultats_boruta, vars_seleccionades_boruta,
      file = "resultats_boruta_50_correlacio.RData")
