@@ -11,10 +11,9 @@ library(ggplot2)
 library(tidyr)
 library(scales)
 
-# Carpeta de sortida
+# creem carpeta per guardar els gràfics
 dir.create("plots", showWarnings = FALSE)
 
-# Paleta de colors consistent per a tots els gràfics
 COLORS_METODES <- c(
   "Stepwise"      = "#E63946",
   "Bootstrap"     = "#457B9D",
@@ -35,7 +34,7 @@ COLORS_CORR <- c(
 
 # Preparem les dades
 ```{r}
-#carragar tots es RDatas
+#carragar tots els RDatas
 
 setwd("~/RESULTATS_TFG")
 
@@ -59,7 +58,6 @@ load("resultats_fp_ranger_nul.RData")
 ```
 
 ```{r}
-# Important: tenim un únic valor per escenari (mitjana)
 
 # Escenari 50%
 prep_50 <- function(df, nom_metode) {
