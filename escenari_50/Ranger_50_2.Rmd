@@ -1,17 +1,14 @@
 ---
-title: "Untitled"
+title: "Ranger 50% optimitzant paràmetres"
 author: "Max Ranz de la Iglesia"
 date: "2026-06-08"
 output: html_document
 ---
 
 ```{r}
-# =============================================================
 # RANGER - ESCENARI 50% - CERCA D'HIPERPARÀMETRES
-# =============================================================
 
 setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
-
 load("dades_escenari_50_corrAleat.RData")
 
 library(ranger)
@@ -20,14 +17,9 @@ library(futurize)
 library(progressify)
 library(dplyr)
 
-# -------------------------------------------------------------
-# PARAL·LELITZACIÓ
-# -------------------------------------------------------------
 plan(multisession, workers = 12)
 
-# -------------------------------------------------------------
-# GRAELLA D'HIPERPARÀMETRES
-# -------------------------------------------------------------
+# graella amb el hiperparàmetres
 hiper <- expand.grid(
   num.trees  = c(500, 1000),
   mtry_tipus = c("sqrt", "p/3", "p/2"),
@@ -40,9 +32,7 @@ cat(sprintf("Total escenaris (N x pi x cor):     %d\n", nrow(comb)))
 cat(sprintf("Total forests a entrenar:            %d\n",
             nrow(hiper) * nrow(comb) * iters))
 
-# -------------------------------------------------------------
-# FUNCIÓ D'UNA ITERACIÓ
-# -------------------------------------------------------------
+
 una_iteracio_50 <- function(j, X_esc, Y_esc, num_vars, num_sig,
                              num.trees, mtry_tipus, llindar) {
 
@@ -104,9 +94,7 @@ una_iteracio_50 <- function(j, X_esc, Y_esc, num_vars, num_sig,
   })
 }
 
-# -------------------------------------------------------------
-# BUCLE PRINCIPAL
-# -------------------------------------------------------------
+
 resultats_llista <- vector("list", nrow(comb) * nrow(hiper))
 idx <- 1
 
@@ -195,15 +183,11 @@ cat("\n====================================\n")
 cat(sprintf("Temps total: %.2f minuts\n", temps_total["elapsed"] / 60))
 cat("====================================\n\n")
 
-# -------------------------------------------------------------
-# GUARDAR RESULTATS
-# -------------------------------------------------------------
+
 save(resultats_ranger_hiper,
      file = "resultats_ranger_hiper.RData")
 
-# -------------------------------------------------------------
-# ANÀLISI DELS RESULTATS
-# -------------------------------------------------------------
+
 resum_hiper <- resultats_ranger_hiper |>
   group_by(num.trees, mtry_tipus, llindar) |>
   summarise(
