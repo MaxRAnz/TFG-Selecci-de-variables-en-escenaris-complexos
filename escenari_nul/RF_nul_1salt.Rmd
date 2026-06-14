@@ -1,12 +1,11 @@
 ---
-title: "Untitled"
+title: "Random forest amb 1 salt: escenari nul"
 author: "Max Ranz de la Iglesia"
 date: "2026-04-22"
 output: html_document
 ---
 
 ```{r}
-# RANDOM FOREST (sense Boruta) - amb correlació
 setwd("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos")
 load("D:/Documentos/TFG/TFG-Selecci-de-variables-en-escenaris-complexos/dades_escenari_nul.RData")
 library(randomForest)
@@ -30,17 +29,17 @@ escoger_rf <- function(x, porcentage_min = 3) {
 resultats_fp_rf <- data.frame(
   N           = integer(),
   pi          = numeric(),
-  correlation = numeric(),   # <- AFEGIT
+  correlation = numeric(),   
   FP          = numeric(),
   FP_percent  = numeric()
 )
 
 system.time({
-  for (i in seq_len(nrow(comb))) {         # <- canvi: nrow() en lloc de seq_along()
+  for (i in seq_len(nrow(comb))) {         
     
-    N           <- comb[i, "N"]            # <- canvi: accés per data.frame
+    N           <- comb[i, "N"]          
     pi          <- comb[i, "pi"]
-    correlation <- comb[i, "correlation"]  # <- AFEGIT
+    correlation <- comb[i, "correlation"] 
     fp_rf       <- numeric(iters)
 
     for (j in 1:iters) {
